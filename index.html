@@ -1,0 +1,973 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="coze-bot-id" content="7630382821936988186">
+  <meta name="coze-assistant-name" content="陪伴助手">
+  <meta name="coze-assistant-subtitle" content="点一下就能开始问。看字不方便，也可以听语音。">
+  <meta name="coze-store-url" content="">
+  <title>陪伴助手</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6efe2;
+      --bg-deep: #f0e3cb;
+      --card: rgba(255, 252, 246, 0.96);
+      --line: rgba(80, 57, 18, 0.12);
+      --text: #38230d;
+      --muted: #6d563b;
+      --accent: #b65b1a;
+      --blue: #2d6bd6;
+      --success: #2f7a3f;
+      --error: #b43333;
+      --shadow: 0 18px 48px rgba(94, 66, 28, 0.14);
+      --radius-xl: 30px;
+      --radius-lg: 24px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255, 214, 153, 0.7), transparent 34%),
+        radial-gradient(circle at top right, rgba(255, 241, 210, 0.8), transparent 36%),
+        linear-gradient(180deg, #fff8eb 0%, var(--bg) 52%, var(--bg-deep) 100%);
+    }
+
+    button,
+    a,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding:
+        calc(18px + var(--safe-top))
+        14px
+        calc(18px + var(--safe-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .hero,
+    .action-panel,
+    .status-card,
+    .chat-shell,
+    .error-panel {
+      background: var(--card);
+      border: 1px solid rgba(80, 57, 18, 0.12);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      border-radius: var(--radius-xl);
+      padding: 22px 20px;
+      background:
+        radial-gradient(circle at top right, rgba(255, 214, 153, 0.36), transparent 34%),
+        linear-gradient(135deg, rgba(255, 253, 249, 0.98), rgba(255, 247, 232, 0.96));
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--accent);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      margin: 10px 0 10px;
+      font-size: 34px;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .action-panel {
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(255, 254, 251, 0.98), rgba(255, 248, 235, 0.95));
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .action-btn {
+      min-height: 64px;
+      border: 0;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      text-decoration: none;
+      padding: 16px 18px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+    }
+
+    .action-btn:active {
+      transform: translateY(1px) scale(0.997);
+    }
+
+    .action-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .action-btn.primary {
+      color: #fff;
+      background: linear-gradient(180deg, #d87229 0%, var(--accent) 100%);
+      box-shadow: 0 14px 24px rgba(182, 91, 26, 0.22);
+    }
+
+    .action-btn.secondary {
+      color: var(--blue);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 247, 255, 0.98));
+      border: 2px solid rgba(45, 107, 214, 0.16);
+    }
+
+    .action-btn.ghost {
+      color: var(--text);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 244, 235, 0.98));
+      border: 2px solid rgba(109, 86, 59, 0.12);
+    }
+
+    .action-btn.hidden {
+      display: none;
+    }
+
+    .action-tip {
+      margin: 14px 2px 0;
+      font-size: 18px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .status-card {
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .status-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--success);
+      box-shadow: 0 0 0 10px rgba(47, 122, 63, 0.12);
+      flex: 0 0 auto;
+      margin-top: 8px;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    .status-title {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .status-desc {
+      margin: 6px 0 0;
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .chat-shell {
+      flex: 1;
+      min-height: 64vh;
+      border-radius: var(--radius-xl);
+      padding: 10px;
+      background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(248, 239, 221, 0.92));
+    }
+
+    .chat-host {
+      min-height: calc(64vh - 20px);
+      height: 100%;
+      border-radius: 22px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 244, 235, 0.92));
+      border: 1px solid rgba(80, 57, 18, 0.08);
+      font-size: 18px;
+    }
+
+    .chat-placeholder {
+      min-height: inherit;
+      padding: 28px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .chat-placeholder-title {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .chat-placeholder-desc {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .error-panel {
+      display: none;
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      border-color: rgba(180, 51, 51, 0.18);
+      background: linear-gradient(180deg, rgba(255, 247, 247, 0.98), rgba(255, 238, 238, 0.95));
+    }
+
+    .error-panel.visible {
+      display: block;
+    }
+
+    .error-title {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--error);
+    }
+
+    .error-message {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.7;
+      color: #8e2525;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.08);
+        opacity: 0.8;
+      }
+    }
+
+    @media (min-width: 560px) {
+      .page {
+        max-width: 760px;
+        margin: 0 auto;
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .action-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .action-btn.primary {
+        grid-column: 1 / -1;
+      }
+
+      .chat-shell {
+        min-height: 760px;
+      }
+
+      .chat-host {
+        min-height: 740px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-label="页面说明">
+      <p class="eyebrow">一步进入</p>
+      <h1 id="hero-title">陪伴助手</h1>
+      <p class="subtitle" id="hero-subtitle">点一下就能开始问。看字不方便，也可以听语音。</p>
+    </section>
+
+    <section class="action-panel" aria-label="快捷操作">
+      <div class="action-grid">
+        <button class="action-btn primary" id="voice-toggle" type="button">开启朗读</button>
+        <button class="action-btn secondary" id="read-last" type="button" disabled>朗读上一条</button>
+        <a class="action-btn ghost hidden" id="store-link" href="#" target="_self" rel="noreferrer">备用入口</a>
+        <button class="action-btn ghost hidden" id="retry-button" type="button">重新连接</button>
+      </div>
+      <p class="action-tip" id="voice-tip">如果想听语音，请先点一次“开启朗读”。以后新回复会尽量自动念出来；如果没自动念，请点“朗读上一条”。</p>
+    </section>
+
+    <section class="status-card" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <div class="status-copy">
+        <p class="status-title" id="status-title">正在打开聊天窗口</p>
+        <p class="status-desc" id="status-desc">页面刚打开，请稍等几秒，助手会自动准备好。</p>
+      </div>
+    </section>
+
+    <section class="chat-shell" aria-label="聊天区域">
+      <div class="chat-host" id="chat-host">
+        <div class="chat-placeholder">
+          <p class="chat-placeholder-title">正在准备聊天能力</p>
+          <p class="chat-placeholder-desc">如果看字不方便，可以先点上面的“开启朗读”。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="error-panel" id="error-panel" role="alert" aria-live="assertive">
+      <p class="error-title" id="error-title">当前页面暂时无法使用</p>
+      <p class="error-message" id="error-message"></p>
+    </section>
+  </main>
+
+  <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.19/libs/cn/index.js"></script>
+  <script>
+    (function () {
+      var TOKEN_ENDPOINT = "/.netlify/functions/coze-token";
+      var STORAGE_KEY = "site_user_id";
+      var VOICE_PREF_KEY = "assistant_voice_preference";
+      var heroTitleEl = document.getElementById("hero-title");
+      var heroSubtitleEl = document.getElementById("hero-subtitle");
+      var statusTitleEl = document.getElementById("status-title");
+      var statusDescEl = document.getElementById("status-desc");
+      var voiceToggleEl = document.getElementById("voice-toggle");
+      var readLastEl = document.getElementById("read-last");
+      var voiceTipEl = document.getElementById("voice-tip");
+      var storeLinkEl = document.getElementById("store-link");
+      var retryButtonEl = document.getElementById("retry-button");
+      var errorPanelEl = document.getElementById("error-panel");
+      var errorTitleEl = document.getElementById("error-title");
+      var errorMessageEl = document.getElementById("error-message");
+      var chatHostEl = document.getElementById("chat-host");
+
+      var appConfig = readConfig();
+      var uiNoiseTexts = {};
+      var runtime = {
+        sdkClient: null,
+        siteUserId: "",
+        lastReplyText: "",
+        knownTextSet: new Set(),
+        observer: null,
+        scanTimer: null,
+        voiceEnabled: readStoredBool(VOICE_PREF_KEY),
+        voiceUnlocked: false,
+        voiceSupported: typeof window.speechSynthesis !== "undefined" && typeof window.SpeechSynthesisUtterance !== "undefined"
+      };
+
+      heroTitleEl.textContent = appConfig.assistantName;
+      heroSubtitleEl.textContent = appConfig.assistantSubtitle;
+      document.title = appConfig.assistantName;
+
+      buildUiNoiseMap();
+      renderStoreLink();
+      renderVoiceState();
+      bindEvents();
+
+      function readConfig() {
+        return {
+          botId: readMeta("coze-bot-id") || "7630382821936988186",
+          assistantName: readMeta("coze-assistant-name") || "陪伴助手",
+          assistantSubtitle: readMeta("coze-assistant-subtitle") || "点一下就能开始问。看字不方便，也可以听语音。",
+          storeUrl: readMeta("coze-store-url") || ""
+        };
+      }
+
+      function readMeta(name) {
+        var meta = document.querySelector('meta[name="' + name + '"]');
+        return meta ? (meta.getAttribute("content") || "").trim() : "";
+      }
+
+      function buildUiNoiseMap() {
+        [
+          appConfig.assistantName,
+          appConfig.assistantSubtitle,
+          "一步进入",
+          "开启朗读",
+          "关闭朗读",
+          "朗读上一条",
+          "备用入口",
+          "重新连接",
+          "正在打开聊天窗口",
+          "页面刚打开，请稍等几秒，助手会自动准备好。",
+          "正在准备聊天能力",
+          "如果看字不方便，可以先点上面的“开启朗读”。",
+          "当前页面暂时无法使用"
+        ].forEach(function (text) {
+          uiNoiseTexts[normalizeText(text)] = true;
+        });
+      }
+
+      function renderStoreLink() {
+        if (appConfig.storeUrl) {
+          storeLinkEl.classList.remove("hidden");
+          storeLinkEl.href = appConfig.storeUrl;
+        } else {
+          storeLinkEl.classList.add("hidden");
+        }
+      }
+
+      function bindEvents() {
+        voiceToggleEl.addEventListener("click", function () {
+          if (!runtime.voiceSupported) {
+            updateVoiceTip("当前浏览器不支持朗读。建议直接看文字，或者换手机系统浏览器再试。");
+            return;
+          }
+
+          if (runtime.voiceEnabled) {
+            disableVoice();
+          } else {
+            enableVoice();
+          }
+        });
+
+        readLastEl.addEventListener("click", function () {
+          if (!runtime.voiceSupported) {
+            updateVoiceTip("当前浏览器不支持朗读。");
+            return;
+          }
+
+          if (!runtime.voiceEnabled) {
+            runtime.voiceEnabled = true;
+            storeBool(VOICE_PREF_KEY, true);
+          }
+
+          runtime.voiceUnlocked = true;
+          renderVoiceState();
+
+          var text = runtime.lastReplyText || findLastReadableText();
+          if (!text) {
+            updateVoiceTip("还没有找到可以朗读的回复。先问一个问题，再点这里。");
+            return;
+          }
+
+          speakText(text);
+        });
+
+        retryButtonEl.addEventListener("click", function () {
+          window.location.reload();
+        });
+
+        document.addEventListener("pointerdown", function () {
+          if (runtime.voiceEnabled && runtime.voiceSupported && !runtime.voiceUnlocked) {
+            runtime.voiceUnlocked = true;
+            renderVoiceState();
+            updateVoiceTip("朗读已经准备好。后面的新回复会尽量自动读出来。");
+          }
+        }, true);
+      }
+
+      function setStatus(title, description) {
+        statusTitleEl.textContent = title;
+        statusDescEl.textContent = description;
+      }
+
+      function updateVoiceTip(message) {
+        voiceTipEl.textContent = message;
+      }
+
+      function renderVoiceState() {
+        if (!runtime.voiceSupported) {
+          voiceToggleEl.textContent = "当前不能朗读";
+          voiceToggleEl.disabled = true;
+          readLastEl.disabled = true;
+          updateVoiceTip("当前浏览器不支持网页朗读。建议先直接看文字，或换系统浏览器。");
+          return;
+        }
+
+        voiceToggleEl.disabled = false;
+        voiceToggleEl.textContent = runtime.voiceEnabled ? "关闭朗读" : "开启朗读";
+        readLastEl.disabled = !runtime.lastReplyText;
+
+        if (!runtime.voiceEnabled) {
+          updateVoiceTip("如果想听语音，请先点一次“开启朗读”。以后新回复会尽量自动念出来；如果没自动念，请点“朗读上一条”。");
+        } else if (!runtime.voiceUnlocked) {
+          updateVoiceTip("已记住朗读偏好。本次打开页面后，请先点一次按钮或聊天区域，浏览器才会允许发声。");
+        } else {
+          updateVoiceTip("朗读已开启。新回复会尽量自动念出来；如果没自动念，请点“朗读上一条”。");
+        }
+      }
+
+      function showError(title, message, details) {
+        errorPanelEl.classList.add("visible");
+        retryButtonEl.classList.remove("hidden");
+        errorTitleEl.textContent = title || "当前页面暂时无法使用";
+        errorMessageEl.textContent = [message, details].filter(Boolean).join("\n");
+      }
+
+      function clearError() {
+        errorPanelEl.classList.remove("visible");
+        retryButtonEl.classList.add("hidden");
+        errorTitleEl.textContent = "当前页面暂时无法使用";
+        errorMessageEl.textContent = "";
+      }
+
+      function setChatPlaceholder(title, description) {
+        chatHostEl.innerHTML = [
+          '<div class="chat-placeholder">',
+          '<p class="chat-placeholder-title">' + escapeHtml(title) + "</p>",
+          '<p class="chat-placeholder-desc">' + escapeHtml(description) + "</p>",
+          "</div>"
+        ].join("");
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function createFallbackUUID() {
+        var now = Date.now().toString(36);
+        var random = Math.random().toString(36).slice(2, 12);
+        return now + random;
+      }
+
+      function getSiteUserId() {
+        var cached = window.localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          return cached;
+        }
+
+        var uuid = window.crypto && typeof window.crypto.randomUUID === "function"
+          ? window.crypto.randomUUID()
+          : createFallbackUUID();
+        var siteUserId = "u_" + uuid;
+        window.localStorage.setItem(STORAGE_KEY, siteUserId);
+        return siteUserId;
+      }
+
+      function readStoredBool(key) {
+        return window.localStorage.getItem(key) === "1";
+      }
+
+      function storeBool(key, value) {
+        window.localStorage.setItem(key, value ? "1" : "0");
+      }
+
+      async function fetchToken(siteUserId) {
+        var requestUrl = TOKEN_ENDPOINT + "?uid=" + encodeURIComponent(siteUserId);
+        var response = await fetch(requestUrl, {
+          method: "GET",
+          headers: {
+            Accept: "application/json"
+          },
+          cache: "no-store"
+        });
+
+        var payload;
+        try {
+          payload = await response.json();
+        } catch (error) {
+          throw new Error("后端没有返回有效的 JSON。");
+        }
+
+        if (!response.ok) {
+          var errorInfo = payload && payload.error ? payload.error : {};
+          var errorCode = errorInfo.code ? "（" + errorInfo.code + "）" : "";
+          var errorDetails = errorInfo.details ? "详情：" + JSON.stringify(errorInfo.details) : "";
+          throw new Error("token 获取失败" + errorCode + "：" + (errorInfo.message || "未知错误。") + (errorDetails ? "\n" + errorDetails : ""));
+        }
+
+        if (!payload || typeof payload.token !== "string" || !payload.token) {
+          throw new Error("后端响应里缺少 token。");
+        }
+
+        return payload.token;
+      }
+
+      async function refreshToken(siteUserId) {
+        setStatus("正在刷新连接", "为了继续对话，系统正在自动续上访问令牌。");
+        return fetchToken(siteUserId);
+      }
+
+      function ensureSdkReady() {
+        if (!window.CozeWebSDK || !window.CozeWebSDK.WebChatClient) {
+          throw new Error("Coze Chat SDK 没有加载成功，请检查网络或 CDN 地址。");
+        }
+      }
+
+      function mountChat(siteUserId, token) {
+        ensureSdkReady();
+
+        if (runtime.sdkClient) {
+          return runtime.sdkClient;
+        }
+
+        chatHostEl.innerHTML = "";
+
+        runtime.sdkClient = new window.CozeWebSDK.WebChatClient({
+          lang: "zh-CN",
+          config: {
+            type: "bot",
+            bot_id: appConfig.botId,
+            isIframe: false,
+            session_name: siteUserId
+          },
+          auth: {
+            type: "token",
+            token: token,
+            onRefreshToken: function () {
+              return refreshToken(siteUserId);
+            }
+          },
+          userInfo: {
+            id: siteUserId,
+            nickname: "家里用户"
+          },
+          ui: {
+            base: {
+              layout: "mobile",
+              lang: "zh-CN",
+              zIndex: 1
+            },
+            header: {
+              isShow: true,
+              isNeedClose: false
+            },
+            asstBtn: {
+              isNeed: false
+            },
+            footer: {
+              isShow: false
+            },
+            chatBot: {
+              title: appConfig.assistantName,
+              width: "100%",
+              el: chatHostEl
+            }
+          }
+        });
+
+        startReplyObserver();
+        return runtime.sdkClient;
+      }
+
+      function startReplyObserver() {
+        stopReplyObserver();
+
+        window.setTimeout(function () {
+          runtime.knownTextSet = new Set(collectReadableTexts());
+        }, 1800);
+
+        runtime.observer = new MutationObserver(function () {
+          window.clearTimeout(runtime.scanTimer);
+          runtime.scanTimer = window.setTimeout(scanReplies, 800);
+        });
+
+        runtime.observer.observe(chatHostEl, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+
+      function stopReplyObserver() {
+        if (runtime.observer) {
+          runtime.observer.disconnect();
+          runtime.observer = null;
+        }
+
+        if (runtime.scanTimer) {
+          window.clearTimeout(runtime.scanTimer);
+          runtime.scanTimer = null;
+        }
+      }
+
+      function scanReplies() {
+        var texts = collectReadableTexts();
+        if (!texts.length) {
+          return;
+        }
+
+        var newTexts = texts.filter(function (text) {
+          return !runtime.knownTextSet.has(text);
+        });
+
+        texts.forEach(function (text) {
+          runtime.knownTextSet.add(text);
+        });
+
+        if (!newTexts.length) {
+          return;
+        }
+
+        var candidate = pickReplyCandidate(newTexts);
+        if (!candidate) {
+          return;
+        }
+
+        runtime.lastReplyText = candidate;
+        renderVoiceState();
+
+        if (runtime.voiceEnabled && runtime.voiceUnlocked) {
+          speakText(candidate);
+        }
+      }
+
+      function collectReadableTexts() {
+        var nodes = chatHostEl.querySelectorAll("*");
+        var texts = [];
+        var seen = {};
+
+        Array.prototype.forEach.call(nodes, function (node) {
+          if (!node || !node.textContent) {
+            return;
+          }
+
+          if (node.closest("button,input,textarea,form,[role='button'],[contenteditable='true']")) {
+            return;
+          }
+
+          if (node.childElementCount > 0) {
+            return;
+          }
+
+          var text = normalizeText(node.textContent);
+          if (!text || text.length < 6) {
+            return;
+          }
+
+          if (uiNoiseTexts[text]) {
+            return;
+          }
+
+          if (/^(发送|重新生成|复制|停止|继续|返回|收起|展开)$/.test(text)) {
+            return;
+          }
+
+          if (seen[text]) {
+            return;
+          }
+
+          seen[text] = true;
+          texts.push(text);
+        });
+
+        return texts;
+      }
+
+      function normalizeText(text) {
+        return String(text || "")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function pickReplyCandidate(newTexts) {
+        var filtered = newTexts.filter(function (text) {
+          return text && text.length >= 10 && text !== runtime.lastReplyText && text.indexOf("http://") !== 0 && text.indexOf("https://") !== 0;
+        });
+
+        if (!filtered.length) {
+          return "";
+        }
+
+        return filtered.slice(-3).join("。");
+      }
+
+      function findLastReadableText() {
+        var texts = collectReadableTexts();
+        return texts.length ? texts[texts.length - 1] : "";
+      }
+
+      function enableVoice() {
+        runtime.voiceEnabled = true;
+        runtime.voiceUnlocked = true;
+        storeBool(VOICE_PREF_KEY, true);
+        renderVoiceState();
+        speakText("朗读已经开启。后面的新回复，我会尽量自动读给您听。");
+      }
+
+      function disableVoice() {
+        runtime.voiceEnabled = false;
+        runtime.voiceUnlocked = false;
+        storeBool(VOICE_PREF_KEY, false);
+
+        if (runtime.voiceSupported) {
+          window.speechSynthesis.cancel();
+        }
+
+        renderVoiceState();
+      }
+
+      function pickVoice() {
+        if (!runtime.voiceSupported) {
+          return null;
+        }
+
+        var voices = window.speechSynthesis.getVoices();
+        if (!voices || !voices.length) {
+          return null;
+        }
+
+        return voices.find(function (voice) {
+          return voice.lang === "zh-CN";
+        }) || voices.find(function (voice) {
+          return voice.lang && voice.lang.indexOf("zh") === 0;
+        }) || voices[0];
+      }
+
+      function splitSpeechText(text) {
+        var cleanText = normalizeText(text)
+          .replace(/https?:\/\/\S+/g, "")
+          .replace(/[•·]/g, "，")
+          .replace(/\s{2,}/g, " ");
+
+        if (!cleanText) {
+          return [];
+        }
+
+        var parts = (cleanText.match(/[^。！？!?；;]+[。！？!?；;]?/g) || [cleanText])
+          .map(function (part) {
+            return normalizeText(part);
+          })
+          .filter(Boolean);
+
+        if (!parts.length) {
+          return [cleanText];
+        }
+
+        var chunks = [];
+        var current = "";
+
+        parts.forEach(function (part) {
+          if ((current + part).length > 90 && current) {
+            chunks.push(current);
+            current = part;
+          } else {
+            current += part;
+          }
+        });
+
+        if (current) {
+          chunks.push(current);
+        }
+
+        return chunks;
+      }
+
+      function speakText(text) {
+        if (!runtime.voiceSupported) {
+          updateVoiceTip("当前浏览器不支持朗读。");
+          return;
+        }
+
+        var chunks = splitSpeechText(text);
+        if (!chunks.length) {
+          updateVoiceTip("这条内容暂时不能朗读。");
+          return;
+        }
+
+        runtime.lastReplyText = normalizeText(text);
+        renderVoiceState();
+
+        var voice = pickVoice();
+        window.speechSynthesis.cancel();
+
+        chunks.forEach(function (chunk, index) {
+          var utterance = new window.SpeechSynthesisUtterance(chunk);
+          utterance.lang = voice && voice.lang ? voice.lang : "zh-CN";
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+
+          if (voice) {
+            utterance.voice = voice;
+          }
+
+          if (index === 0) {
+            utterance.onstart = function () {
+              updateVoiceTip("正在朗读这条回复。想再听一遍，可以点“朗读上一条”。");
+            };
+          }
+
+          utterance.onerror = function () {
+            updateVoiceTip("这次没有成功读出来。请再点一次“朗读上一条”。");
+          };
+
+          if (index === chunks.length - 1) {
+            utterance.onend = function () {
+              renderVoiceState();
+            };
+          }
+
+          window.speechSynthesis.speak(utterance);
+        });
+      }
+
+      async function bootstrap() {
+        clearError();
+        setChatPlaceholder("正在打开聊天窗口", "页面刚打开，请稍等几秒，助手会自动准备好。");
+        setStatus("正在准备专属会话", "系统正在识别当前设备，并为这位用户单独建立会话。");
+
+        try {
+          runtime.siteUserId = getSiteUserId();
+          var token = await fetchToken(runtime.siteUserId);
+          setStatus("正在连接助手", "连接已经准备好，马上就能开始问问题。");
+          mountChat(runtime.siteUserId, token);
+          setStatus("现在可以开始使用", "直接点聊天输入框，输入问题；如果想听语音，先点“开启朗读”。");
+        } catch (error) {
+          console.error(error);
+          setStatus("暂时没有连接成功", "请先点“重新连接”；如果你配了 Coze 商店链接，也可以点“备用入口”。");
+          setChatPlaceholder("聊天暂时打不开", "请点上面的“重新连接”。如果你已经配置了备用入口，也可以直接点进去。");
+          showError("聊天初始化失败", error && error.message ? error.message : "发生未知错误。");
+        }
+      }
+
+      if (runtime.voiceSupported) {
+        window.speechSynthesis.getVoices();
+        if (typeof window.speechSynthesis.addEventListener === "function") {
+          window.speechSynthesis.addEventListener("voiceschanged", function () {
+            renderVoiceState();
+          });
+        } else {
+          window.speechSynthesis.onvoiceschanged = function () {
+            renderVoiceState();
+          };
+        }
+      }
+
+      bootstrap();
+    })();
+  </script>
+</body>
+</html>

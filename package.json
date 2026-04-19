@@ -1,0 +1,15 @@
+{
+  "name": "coze-chat-sdk-netlify-h5",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Mobile-friendly Coze Chat SDK H5 project deployable on Netlify.",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}
