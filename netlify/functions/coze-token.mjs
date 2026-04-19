@@ -2,6 +2,7 @@
 import crypto from "node:crypto";
 
 const TOKEN_ENDPOINT = "https://api.coze.cn/api/permission/oauth2/token";
+const TOKEN_AUDIENCE = new URL(TOKEN_ENDPOINT).host;
 const UID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 function buildHeaders(extraHeaders = {}) {
@@ -133,7 +134,7 @@ async function buildAssertion({
   const jwt = new SignJWT({
     iss: clientId,
     sub: clientId,
-    aud: TOKEN_ENDPOINT,
+    aud: TOKEN_AUDIENCE,
     iat,
     exp,
     jti: crypto.randomUUID(),
@@ -157,6 +158,93 @@ function parseUpstreamPayload(text) {
   } catch {
     return { raw: text };
   }
+}
+
+async function requestCozeToken(assertion, clientId) {
+  const requestVariants = [
+    {
+      name: "authorization_header_json",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${assertion}`
+      },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        duration_seconds: 3600
+      })
+    },
+    {
+      name: "assertion_json",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion,
+        client_id: clientId,
+        duration_seconds: 3600
+      })
+    },
+    {
+      name: "client_assertion_form",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json"
+      },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_assertion_type:
+          "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+        client_assertion: assertion
+      }).toString()
+    }
+  ];
+
+  let lastFailure = null;
+
+  for (const variant of requestVariants) {
+    const upstreamResponse = await fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: variant.headers,
+      body: variant.body
+    });
+
+    const upstreamText = await upstreamResponse.text();
+    const upstreamPayload = parseUpstreamPayload(upstreamText);
+
+    if (upstreamResponse.ok) {
+      return {
+        ok: true,
+        variant: variant.name,
+        payload: upstreamPayload
+      };
+    }
+
+    lastFailure = {
+      ok: false,
+      variant: variant.name,
+      status: upstreamResponse.status,
+      statusText: upstreamResponse.statusText,
+      payload: upstreamPayload
+    };
+
+    const errorMessage = JSON.stringify(upstreamPayload).toLowerCase();
+    const shouldTryNext =
+      upstreamResponse.status === 400 ||
+      upstreamResponse.status === 401 ||
+      errorMessage.includes("empty_jwt") ||
+      errorMessage.includes("invalid_client") ||
+      errorMessage.includes("invalid_request");
+
+    if (!shouldTryNext) {
+      break;
+    }
+  }
+
+  return lastFailure;
 }
 
 function getFriendlyError(error) {
@@ -233,35 +321,23 @@ export async function handler(event) {
       uid
     });
 
-    const upstreamResponse = await fetch(TOKEN_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
-      body: JSON.stringify({
-        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        assertion
-      })
-    });
-
-    const upstreamText = await upstreamResponse.text();
-    const upstreamPayload = parseUpstreamPayload(upstreamText);
-
-    if (!upstreamResponse.ok) {
+    const upstreamResult = await requestCozeToken(assertion, clientId);
+    if (!upstreamResult?.ok) {
       return jsonResponse(502, {
         error: {
           code: "COZE_TOKEN_REQUEST_FAILED",
           message: "Coze token 接口返回异常。",
           details: {
-            status: upstreamResponse.status,
-            status_text: upstreamResponse.statusText,
-            upstream: upstreamPayload
+            status: upstreamResult?.status || 502,
+            status_text: upstreamResult?.statusText || "Bad Gateway",
+            request_variant: upstreamResult?.variant || "unknown",
+            upstream: upstreamResult?.payload || {}
           }
         }
       });
     }
 
+    const upstreamPayload = upstreamResult.payload;
     const accessToken =
       upstreamPayload.access_token ||
       upstreamPayload.token ||
