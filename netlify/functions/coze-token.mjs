@@ -204,6 +204,7 @@ async function requestCozeToken(assertion, clientId) {
   ];
 
   let lastFailure = null;
+  const attempts = [];
 
   for (const variant of requestVariants) {
     const upstreamResponse = await fetch(TOKEN_ENDPOINT, {
@@ -219,7 +220,8 @@ async function requestCozeToken(assertion, clientId) {
       return {
         ok: true,
         variant: variant.name,
-        payload: upstreamPayload
+        payload: upstreamPayload,
+        attempts
       };
     }
 
@@ -230,6 +232,12 @@ async function requestCozeToken(assertion, clientId) {
       statusText: upstreamResponse.statusText,
       payload: upstreamPayload
     };
+    attempts.push({
+      variant: variant.name,
+      status: upstreamResponse.status,
+      statusText: upstreamResponse.statusText,
+      payload: upstreamPayload
+    });
 
     const errorMessage = JSON.stringify(upstreamPayload).toLowerCase();
     const shouldTryNext =
@@ -244,7 +252,10 @@ async function requestCozeToken(assertion, clientId) {
     }
   }
 
-  return lastFailure;
+  return {
+    ...lastFailure,
+    attempts
+  };
 }
 
 function getFriendlyError(error) {
@@ -331,7 +342,8 @@ export async function handler(event) {
             status: upstreamResult?.status || 502,
             status_text: upstreamResult?.statusText || "Bad Gateway",
             request_variant: upstreamResult?.variant || "unknown",
-            upstream: upstreamResult?.payload || {}
+            upstream: upstreamResult?.payload || {},
+            attempts: upstreamResult?.attempts || []
           }
         }
       });
