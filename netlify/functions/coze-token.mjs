@@ -21,7 +21,32 @@ function jsonResponse(statusCode, payload) {
 }
 
 function normalizePrivateKey(privateKeyValue) {
-  return privateKeyValue.replace(/\\n/g, "\n").trim();
+  const normalized = privateKeyValue
+    .replace(/\r\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized.startsWith("-----BEGIN")) {
+    return normalized;
+  }
+
+  // Some consoles only show the base64 body. Wrap it into a standard PEM block
+  // so Node/OpenSSL can parse it as a PKCS#8 private key.
+  const compact = normalized.replace(/\s+/g, "");
+  if (/^[A-Za-z0-9+/=]+$/.test(compact) && compact.length > 128) {
+    const wrappedLines = compact.match(/.{1,64}/g) || [compact];
+    return [
+      "-----BEGIN PRIVATE KEY-----",
+      ...wrappedLines,
+      "-----END PRIVATE KEY-----"
+    ].join("\n");
+  }
+
+  return normalized;
 }
 
 function validateUid(uid) {
@@ -76,6 +101,36 @@ function parseUpstreamPayload(text) {
   } catch {
     return { raw: text };
   }
+}
+
+function getFriendlyError(error) {
+  const rawMessage = error?.message || "Unknown error";
+
+  if (
+    rawMessage.includes("DECODER routines") ||
+    rawMessage.includes("unsupported") ||
+    rawMessage.includes("PEM") ||
+    rawMessage.includes("asn1")
+  ) {
+    return {
+      code: "INVALID_PRIVATE_KEY",
+      message:
+        "COZE_PRIVATE_KEY 格式不正确。请填写完整私钥，建议包含 BEGIN/END PRIVATE KEY；如果你粘贴的是单行内容，请保留 \\n 或直接粘贴多行 PEM。",
+      details: {
+        name: error?.name || "Error",
+        message: rawMessage
+      }
+    };
+  }
+
+  return {
+    code: "INTERNAL_ERROR",
+    message: "服务端生成 Coze token 时发生异常。",
+    details: {
+      name: error?.name || "Error",
+      message: rawMessage
+    }
+  };
 }
 
 export async function handler(event) {
@@ -173,14 +228,7 @@ export async function handler(event) {
     });
   } catch (error) {
     return jsonResponse(500, {
-      error: {
-        code: "INTERNAL_ERROR",
-        message: "服务端生成 Coze token 时发生异常。",
-        details: {
-          name: error?.name || "Error",
-          message: error?.message || "Unknown error"
-        }
-      }
+      error: getFriendlyError(error)
     });
   }
 }
