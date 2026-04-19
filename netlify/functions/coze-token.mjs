@@ -21,7 +21,7 @@ function jsonResponse(statusCode, payload) {
 }
 
 function normalizePrivateKey(privateKeyValue) {
-  const normalized = privateKeyValue
+  let normalized = privateKeyValue
     .replace(/\r\n/g, "\n")
     .replace(/\\n/g, "\n")
     .trim();
@@ -30,8 +30,25 @@ function normalizePrivateKey(privateKeyValue) {
     return "";
   }
 
-  if (normalized.startsWith("-----BEGIN")) {
-    return normalized;
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+
+  const pemMatch = normalized.match(
+    /^-----BEGIN ([A-Z0-9 ]+)-----\s*([\s\S]+?)\s*-----END \1-----$/i
+  );
+  if (pemMatch) {
+    const [, label, body] = pemMatch;
+    const compactBody = body.replace(/\s+/g, "");
+    const wrappedLines = compactBody.match(/.{1,64}/g) || [compactBody];
+    return [
+      `-----BEGIN ${label}-----`,
+      ...wrappedLines,
+      `-----END ${label}-----`
+    ].join("\n");
   }
 
   // Some consoles only show the base64 body. Wrap it into a standard PEM block
@@ -47,6 +64,48 @@ function normalizePrivateKey(privateKeyValue) {
   }
 
   return normalized;
+}
+
+function extractPemBody(privateKeyPem) {
+  const pemMatch = privateKeyPem.match(
+    /^-----BEGIN ([A-Z0-9 ]+)-----\s*([\s\S]+?)\s*-----END \1-----$/i
+  );
+
+  if (!pemMatch) {
+    return "";
+  }
+
+  return pemMatch[2].replace(/[^A-Za-z0-9+/=]/g, "");
+}
+
+function createPrivateKeyObject(privateKeyPem) {
+  try {
+    return crypto.createPrivateKey({
+      key: privateKeyPem,
+      format: "pem"
+    });
+  } catch (pemError) {
+    const compactBody = extractPemBody(privateKeyPem);
+    if (!compactBody) {
+      throw pemError;
+    }
+
+    const derBuffer = Buffer.from(compactBody, "base64");
+    const derTypes = ["pkcs8", "pkcs1", "sec1"];
+    for (const type of derTypes) {
+      try {
+        return crypto.createPrivateKey({
+          key: derBuffer,
+          format: "der",
+          type
+        });
+      } catch {
+        // try next type
+      }
+    }
+
+    throw pemError;
+  }
 }
 
 function validateUid(uid) {
@@ -69,10 +128,7 @@ async function buildAssertion({
 }) {
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + 300;
-  const privateKey = crypto.createPrivateKey({
-    key: privateKeyPem,
-    format: "pem"
-  });
+  const privateKey = createPrivateKeyObject(privateKeyPem);
 
   const jwt = new SignJWT({
     iss: clientId,
